@@ -39,6 +39,7 @@ jobs:
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.6.3
+          cli_config_credentials_token: "" 
 
       - name: Check Terraform version
         run: terraform version

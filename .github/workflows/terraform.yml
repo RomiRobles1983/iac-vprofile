@@ -40,6 +40,9 @@ jobs:
         with:
           terraform_version: 1.6.3
 
+      - name: Check Terraform version
+        run: terraform version
+
       # --- Debug: Check that AWS secrets are loaded ---
       - name: Check AWS env variables
         run: |

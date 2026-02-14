@@ -5,7 +5,7 @@ on:
     branches:
       - main
       - stage
-    paths:  
+    paths:
       - terraform/**
   pull_request:
     branches:
@@ -14,10 +14,8 @@ on:
       - terraform/**
 
 env:
-  # Credentials for deployment to AWS
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  # S3 bucket for the Terraform state
   BUCKET_TF_STATE: ${{ secrets.BUCKET_TF_STATE }}
   AWS_REGION: us-east-2
   EKS_CLUSTER: vprofile-eks
@@ -32,19 +30,27 @@ jobs:
         working-directory: ./terraform
 
     steps:
-      - name: Checkout source code 
+      - name: Checkout source code
         uses: actions/checkout@v4
 
-      - name: Setup Terraform with specified version
+      # --- Setup Terraform con versión forzada ---
+      - name: Setup Terraform 1.6.3
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.6.3
-          cli_config_credentials_token: "" 
+          cli_config_credentials_token: ""
 
       - name: Check Terraform version
         run: terraform version
 
-      # --- Debug: Check that AWS secrets are loaded ---
+      # --- Debug: Verificar que los archivos Terraform y required_version sean los correctos ---
+      - name: List Terraform files
+        run: ls -l *.tf
+
+      - name: Show required_version lines
+        run: grep "required_version" *.tf || echo "No required_version found"
+
+      # --- Validación de AWS secrets ---
       - name: Check AWS env variables
         run: |
           if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
@@ -55,7 +61,7 @@ jobs:
           fi
           echo "BUCKET_TF_STATE: $BUCKET_TF_STATE"
 
-      # --- Debug: Check S3 bucket exists ---
+      # --- Validación del bucket S3 ---
       - name: Validate S3 bucket access
         run: |
           if aws s3 ls "s3://$BUCKET_TF_STATE" --region $AWS_REGION; then
@@ -65,6 +71,7 @@ jobs:
             exit 1
           fi
 
+      # --- Terraform steps ---
       - name: Terraform init
         id: init
         run: terraform init -backend-config="bucket=$BUCKET_TF_STATE" -input=false -no-color
@@ -82,14 +89,13 @@ jobs:
         run: |
           terraform plan -no-color -input=false -out planfile || echo "Plan has changes (not failing workflow)"
 
-      # Optional: show plan result without failing workflow
       - name: Terraform show plan
         if: always()
         run: terraform show -no-color planfile || echo "No planfile generated"
 
-      # --- Apply only if needed ---
+      # --- Aplicar Terraform si se desea (opcional para el curso) ---
       # - name: Terraform apply
-      #   run: terraform apply -input=false -auto-approve planfile   
+      #   run: terraform apply -input=false -auto-approve planfile
 
 
 
